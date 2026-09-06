@@ -55,13 +55,21 @@ void UInteractionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UInteractionComponent::Interact()
 {
-	if (bIsInspecting)
+	if (!bIsInspecting)
+	{
+		BeginInspect();
+		return;
+	}
+
+	// while inspecting, Interact picks the item up - but only if it can be picked up.
+	// View-only items are left in inspection; the player exits with Cancel.
+	if (InspectedItem && InspectedItem->CanBePickedUp())
 	{
 		ConfirmPickup();
 	}
 	else
 	{
-		BeginInspect();
+		UE_LOG(LogHorrorTemplate, Warning, TEXT("InteractionComponent: '%s' cannot be picked up; use Cancel to stop inspecting"), *GetNameSafe(InspectedItem));
 	}
 }
 
@@ -89,7 +97,15 @@ void UInteractionComponent::UpdateFocus()
 	FHitResult Hit;
 	World->LineTraceSingleByChannel(Hit, Start, End, TraceChannel, QueryParams);
 
-	SetFocusedItem(Cast<AItemBase>(Hit.GetActor()));
+	AItemBase* HitItem = Cast<AItemBase>(Hit.GetActor());
+
+	// only items the player can actually interact with get focused / highlighted
+	if (HitItem && !HitItem->CanBeInspected())
+	{
+		HitItem = nullptr;
+	}
+
+	SetFocusedItem(HitItem);
 }
 
 void UInteractionComponent::SetFocusedItem(AItemBase* NewItem)
@@ -165,7 +181,13 @@ void UInteractionComponent::ConfirmPickup()
 
 	if (UInventoryComponent* Inventory = GetInventory())
 	{
-		Inventory->AddItem(Item->GetClass());
+		const TSubclassOf<AItemBase> ItemClass = Item->GetClass();
+
+		Inventory->AddItem(ItemClass);
+
+		// equippable items drop straight into a free matching hand
+		Inventory->AutoEquip(ItemClass);
+
 		Inventory->NotifyInspectionEnded();
 	}
 	else

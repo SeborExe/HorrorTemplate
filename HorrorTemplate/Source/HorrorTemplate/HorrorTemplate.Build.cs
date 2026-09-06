@@ -17,6 +17,7 @@ public class HorrorTemplate : ModuleRules
 			"AIModule",
 			"StateTreeModule",
 			"GameplayStateTreeModule",
+			"GameplayTags",
 			"UMG",
 			"Slate"
 		});

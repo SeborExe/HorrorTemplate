@@ -3,6 +3,7 @@
 
 #include "InventoryComponent.h"
 #include "ItemBase.h"
+#include "ItemEquippable.h"
 #include "HorrorTemplateCharacter.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Controller.h"
@@ -70,6 +71,15 @@ bool UInventoryComponent::EquipToHand(TSubclassOf<AItemBase> ItemClass, EItemEqu
 		return false;
 	}
 
+	if (const AItemBase* DefaultItem = ItemClass.GetDefaultObject())
+	{
+		if (!DefaultItem->CanBeEquipped())
+		{
+			UE_LOG(LogHorrorTemplate, Warning, TEXT("EquipToHand: '%s' is not equippable"), *GetNameSafe(*ItemClass));
+			return false;
+		}
+	}
+
 	bool bTwoHanded = false;
 	EItemEquipHand AllowedHand = EItemEquipHand::Any;
 	GetItemDefaults(ItemClass, bTwoHanded, AllowedHand);
@@ -79,7 +89,7 @@ bool UInventoryComponent::EquipToHand(TSubclassOf<AItemBase> ItemClass, EItemEqu
 	{
 		UnequipAll();
 
-		AItemBase* SpawnedItem = SpawnAndAttach(ItemClass, RightHandSocketName);
+		AItemBase* SpawnedItem = SpawnAndAttach(ItemClass, ResolveAttachSocket(ItemClass, EItemEquipHand::Right));
 		if (!SpawnedItem)
 		{
 			return false;
@@ -120,9 +130,7 @@ bool UInventoryComponent::EquipToHand(TSubclassOf<AItemBase> ItemClass, EItemEqu
 	// free the target hand (also clears a two handed item spanning both slots)
 	UnequipHand(TargetHand);
 
-	const FName Socket = (TargetHand == EItemEquipHand::Right) ? RightHandSocketName : LeftHandSocketName;
-
-	AItemBase* SpawnedItem = SpawnAndAttach(ItemClass, Socket);
+	AItemBase* SpawnedItem = SpawnAndAttach(ItemClass, ResolveAttachSocket(ItemClass, TargetHand));
 	if (!SpawnedItem)
 	{
 		return false;
@@ -141,6 +149,54 @@ bool UInventoryComponent::EquipToHand(TSubclassOf<AItemBase> ItemClass, EItemEqu
 
 	OnEquippedChanged.Broadcast(TargetHand, SpawnedItem);
 	return true;
+}
+
+bool UInventoryComponent::AutoEquip(TSubclassOf<AItemBase> ItemClass)
+{
+	if (!ItemClass)
+	{
+		return false;
+	}
+
+	const AItemBase* DefaultItem = ItemClass.GetDefaultObject();
+	if (!DefaultItem || !DefaultItem->CanBeEquipped())
+	{
+		return false;
+	}
+
+	const FItemData& Data = DefaultItem->GetItemData();
+
+	// two handed only auto equips when both hands are empty
+	if (Data.bRequiresBothHands)
+	{
+		if (IsHandOccupied(EItemEquipHand::Right) || IsHandOccupied(EItemEquipHand::Left))
+		{
+			return false;
+		}
+
+		return EquipToHand(ItemClass, EItemEquipHand::Any);
+	}
+
+	// one handed: only auto equip if the hand it wants is free
+	switch (Data.EquipHand)
+	{
+	case EItemEquipHand::Right:
+		return !IsHandOccupied(EItemEquipHand::Right) && EquipToHand(ItemClass, EItemEquipHand::Right);
+
+	case EItemEquipHand::Left:
+		return !IsHandOccupied(EItemEquipHand::Left) && EquipToHand(ItemClass, EItemEquipHand::Left);
+
+	default: // Any: prefer the right hand, then the left
+		if (!IsHandOccupied(EItemEquipHand::Right))
+		{
+			return EquipToHand(ItemClass, EItemEquipHand::Right);
+		}
+		if (!IsHandOccupied(EItemEquipHand::Left))
+		{
+			return EquipToHand(ItemClass, EItemEquipHand::Left);
+		}
+		return false;
+	}
 }
 
 void UInventoryComponent::UnequipHand(EItemEquipHand Hand)
@@ -211,7 +267,7 @@ void UInventoryComponent::HandlePawnChanged(APawn* NewPawn)
 	// rebuild the visuals from the surviving class records
 	if (bTwoHandedEquipped && EquippedRightClass)
 	{
-		EquippedRightActor = SpawnAndAttach(EquippedRightClass, RightHandSocketName);
+		EquippedRightActor = SpawnAndAttach(EquippedRightClass, ResolveAttachSocket(EquippedRightClass, EItemEquipHand::Right));
 		OnEquippedChanged.Broadcast(EItemEquipHand::Right, EquippedRightActor);
 		OnEquippedChanged.Broadcast(EItemEquipHand::Left, EquippedRightActor);
 		return;
@@ -219,13 +275,13 @@ void UInventoryComponent::HandlePawnChanged(APawn* NewPawn)
 
 	if (EquippedRightClass)
 	{
-		EquippedRightActor = SpawnAndAttach(EquippedRightClass, RightHandSocketName);
+		EquippedRightActor = SpawnAndAttach(EquippedRightClass, ResolveAttachSocket(EquippedRightClass, EItemEquipHand::Right));
 		OnEquippedChanged.Broadcast(EItemEquipHand::Right, EquippedRightActor);
 	}
 
 	if (EquippedLeftClass)
 	{
-		EquippedLeftActor = SpawnAndAttach(EquippedLeftClass, LeftHandSocketName);
+		EquippedLeftActor = SpawnAndAttach(EquippedLeftClass, ResolveAttachSocket(EquippedLeftClass, EItemEquipHand::Left));
 		OnEquippedChanged.Broadcast(EItemEquipHand::Left, EquippedLeftActor);
 	}
 }
@@ -313,6 +369,20 @@ bool UInventoryComponent::GetItemDefaults(TSubclassOf<AItemBase> ItemClass, bool
 	return true;
 }
 
+FName UInventoryComponent::ResolveAttachSocket(TSubclassOf<AItemBase> ItemClass, EItemEquipHand Hand) const
+{
+	// item defined socket wins, so designers control exactly how it sits in the hand
+	if (const AItemEquippable* Equippable = Cast<AItemEquippable>(ItemClass.GetDefaultObject()))
+	{
+		if (!Equippable->GetSocketName().IsNone())
+		{
+			return Equippable->GetSocketName();
+		}
+	}
+
+	return (Hand == EItemEquipHand::Left) ? LeftHandSocketName : RightHandSocketName;
+}
+
 AItemBase* UInventoryComponent::SpawnAndAttach(TSubclassOf<AItemBase> ItemClass, FName SocketName)
 {
 	USkeletalMeshComponent* AttachMesh = GetAttachMesh();
@@ -343,6 +413,12 @@ AItemBase* UInventoryComponent::SpawnAndAttach(TSubclassOf<AItemBase> ItemClass,
 
 	const FAttachmentTransformRules AttachmentRule(EAttachmentRule::SnapToTarget, false);
 	SpawnedItem->AttachToComponent(AttachMesh, AttachmentRule, SocketName);
+
+	// equippables define how big they sit in the hand
+	if (const AItemEquippable* Equippable = Cast<AItemEquippable>(ItemClass.GetDefaultObject()))
+	{
+		SpawnedItem->SetActorRelativeScale3D(Equippable->GetHandScale());
+	}
 
 	return SpawnedItem;
 }

@@ -4,16 +4,22 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameplayTagContainer.h"
 #include "ItemTypes.h"
 #include "ItemBase.generated.h"
 
 class UStaticMeshComponent;
 
 /**
- *  Abstract base class for all pickupable / equippable items.
- *  Provides the item's descriptive data (FItemData) and a mesh root that
- *  can be highlighted through the Custom Depth buffer for an outline effect.
- *  Concrete behavior lives in C++ subclasses or in Blueprint subclasses.
+ *  Abstract base class for every item.
+ *  Provides the descriptive data (FItemData), an identifying gameplay tag and a
+ *  mesh root that can be highlighted through the Custom Depth buffer for an
+ *  outline effect.
+ *  Subclasses declare what the player can do with the item by overriding
+ *  CanBeInspected / CanBePickedUp / CanBeEquipped:
+ *   - AItemEquippable  inspect + pick up + equip   (e.g. flashlight)
+ *   - AItemUsable      inspect + pick up           (e.g. key)
+ *   - AItemInspectable inspect only                (view-only prop)
  */
 UCLASS(abstract)
 class HORRORTEMPLATE_API AItemBase : public AActor
@@ -29,6 +35,10 @@ protected:
 	/** Descriptive data for this item */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item")
 	FItemData ItemData;
+
+	/** Identifies this item type. Used for lookups, lock / quest matching, etc. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item")
+	FGameplayTag ItemTag;
 
 	/** Stencil value written to the Custom Depth buffer while highlighted. Read by the outline post process material */
 	UPROPERTY(EditAnywhere, Category="Item|Highlight", meta = (ClampMin = 0, ClampMax = 255))
@@ -61,9 +71,25 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, Category="Item", meta = (DisplayName = "OnHighlightChanged"))
 	void BP_OnHighlightChanged(bool bHighlighted);
 
+	/** Whether the player can hold this item up in front of the camera and inspect it */
+	UFUNCTION(BlueprintPure, Category="Item")
+	virtual bool CanBeInspected() const { return true; }
+
+	/** Whether the player can pick this item up into the inventory */
+	UFUNCTION(BlueprintPure, Category="Item")
+	virtual bool CanBePickedUp() const { return false; }
+
+	/** Whether this item can be equipped into a hand slot */
+	UFUNCTION(BlueprintPure, Category="Item")
+	virtual bool CanBeEquipped() const { return false; }
+
 	/** Returns the item's descriptive data */
 	UFUNCTION(BlueprintPure, Category="Item")
 	const FItemData& GetItemData() const { return ItemData; }
+
+	/** Returns the item's identifying gameplay tag */
+	UFUNCTION(BlueprintPure, Category="Item")
+	FGameplayTag GetItemTag() const { return ItemTag; }
 
 	/** Returns the item's localized display name */
 	UFUNCTION(BlueprintPure, Category="Item")

@@ -114,6 +114,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool EquipToHand(TSubclassOf<AItemBase> ItemClass, EItemEquipHand Hand);
 
+	/**
+	 *  Equips ItemClass into its natural hand when that hand is free (both hands for a
+	 *  two handed item). No-op if the item isn't equippable or the hand is taken;
+	 *  never displaces an already equipped item. The item must already be owned.
+	 *  Returns true if it got equipped.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	bool AutoEquip(TSubclassOf<AItemBase> ItemClass);
+
 	/** Clears a hand slot and destroys its visual. Clears both slots for a two handed item */
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void UnequipHand(EItemEquipHand Hand);
@@ -157,6 +166,9 @@ protected:
 
 	/** Spawns an item actor and attaches it to the given socket on the attach mesh */
 	AItemBase* SpawnAndAttach(TSubclassOf<AItemBase> ItemClass, FName SocketName);
+
+	/** Returns the socket to attach ItemClass to: the item's own equip socket, else the hand socket */
+	FName ResolveAttachSocket(TSubclassOf<AItemBase> ItemClass, EItemEquipHand Hand) const;
 
 	/** Destroys the visual and clears the class record for a single hand (Right or Left only) */
 	void ClearHand(EItemEquipHand Hand);
