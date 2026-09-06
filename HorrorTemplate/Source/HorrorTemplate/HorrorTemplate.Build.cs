@@ -26,6 +26,7 @@ public class HorrorTemplate : ModuleRules
 		PublicIncludePaths.AddRange(new string[] {
 			"HorrorTemplate",
 			"HorrorTemplate/Items/Public",
+			"HorrorTemplate/Player/Public",
 			"HorrorTemplate/Variant_Horror",
 			"HorrorTemplate/Variant_Horror/UI",
 			"HorrorTemplate/Variant_Shooter",
