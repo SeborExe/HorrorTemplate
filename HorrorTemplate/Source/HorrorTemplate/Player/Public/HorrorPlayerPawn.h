@@ -7,6 +7,7 @@
 #include "HorrorPlayerPawn.generated.h"
 
 class UInputAction;
+class UInteractionComponent;
 
 /**
  *  First person player pawn for the Horror game.
@@ -14,6 +15,8 @@ class UInputAction;
  *  camera and the Enhanced Input move / look / jump bindings.
  *  Adds hold-to-sprint: the pawn walks at WalkSpeed by default and moves at
  *  SprintSpeed while the sprint action is held.
+ *  Carries the interaction component, which drives item focus / inspection; look
+ *  and movement input are suppressed here while an item is being inspected.
  */
 UCLASS(abstract)
 class HORRORTEMPLATE_API AHorrorPlayerPawn : public AHorrorTemplateCharacter
@@ -26,6 +29,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	TObjectPtr<UInputAction> SprintAction;
 
+	/** Interact Input Action (E). Focus an item to inspect it, then again to pick it up */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	TObjectPtr<UInputAction> InteractAction;
+
+	/** Cancel Input Action (Esc). Puts an inspected item back */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	TObjectPtr<UInputAction> CancelAction;
+
 	/** Ground speed while walking. Applied to MaxWalkSpeed on spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement", meta = (ClampMin = 0, Units = "cm/s"))
 	float WalkSpeed = 150.0f;
@@ -34,10 +45,18 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement", meta = (ClampMin = 0, Units = "cm/s"))
 	float SprintSpeed = 400.0f;
 
+	/** Drives item focus highlighting and inspection */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInteractionComponent> Interaction;
+
 public:
 
 	/** Constructor */
 	AHorrorPlayerPawn();
+
+	/** Returns the interaction component */
+	UFUNCTION(BlueprintPure, Category="Interaction")
+	UInteractionComponent* GetInteraction() const { return Interaction; }
 
 protected:
 
@@ -46,6 +65,15 @@ protected:
 
 	/** Set up input action bindings */
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
+
+	/** Rotates the inspected item instead of the player while inspecting */
+	virtual void DoAim(float Yaw, float Pitch) override;
+
+	/** Suppressed while inspecting an item */
+	virtual void DoMove(float Right, float Forward) override;
+
+	/** Suppressed while inspecting an item */
+	virtual void DoJumpStart() override;
 
 	/** Raises the movement speed to SprintSpeed. Also callable from touch UI */
 	UFUNCTION(BlueprintCallable, Category="Input")
