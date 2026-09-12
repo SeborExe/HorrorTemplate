@@ -37,6 +37,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	TObjectPtr<UInputAction> CancelAction;
 
+	/** Use Left Hand Input Action (LMB). Activates UseItem on the left hand's item, or a two handed item */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	TObjectPtr<UInputAction> UseLeftAction;
+
+	/** Use Right Hand Input Action (RMB). Activates UseItem on the right hand's item */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	TObjectPtr<UInputAction> UseRightAction;
+
 	/** Ground speed while walking. Applied to MaxWalkSpeed on spawn */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement", meta = (ClampMin = 0, Units = "cm/s"))
 	float WalkSpeed = 150.0f;
@@ -82,4 +90,12 @@ protected:
 	/** Restores the movement speed to WalkSpeed. Also callable from touch UI */
 	UFUNCTION(BlueprintCallable, Category="Input")
 	virtual void DoStopSprint();
+
+	/** Activates UseItem on the left hand's item (or a two handed item). Also callable from touch UI */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoUseLeftHand();
+
+	/** Activates UseItem on the right hand's item. Also callable from touch UI */
+	UFUNCTION(BlueprintCallable, Category="Input")
+	virtual void DoUseRightHand();
 };

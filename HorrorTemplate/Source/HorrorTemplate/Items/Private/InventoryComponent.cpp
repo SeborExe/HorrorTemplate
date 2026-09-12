@@ -199,6 +199,31 @@ bool UInventoryComponent::AutoEquip(TSubclassOf<AItemBase> ItemClass)
 	}
 }
 
+void UInventoryComponent::UseHandItem(EItemEquipHand Hand)
+{
+	AItemBase* Item = nullptr;
+
+	if (bTwoHandedEquipped)
+	{
+		// single instance lives in the right hand slot; only Left activates it
+		if (Hand != EItemEquipHand::Left)
+		{
+			return;
+		}
+
+		Item = EquippedRightActor;
+	}
+	else
+	{
+		Item = GetEquippedItem(Hand);
+	}
+
+	if (AItemEquippable* Equippable = Cast<AItemEquippable>(Item))
+	{
+		Equippable->UseItem();
+	}
+}
+
 void UInventoryComponent::UnequipHand(EItemEquipHand Hand)
 {
 	// a two handed item spans both slots, so any unequip drops the whole thing

@@ -42,4 +42,12 @@ public:
 	/** Returns the relative scale to use while equipped */
 	UFUNCTION(BlueprintPure, Category="Item|Equip")
 	FVector GetHandScale() const { return HandScale; }
+
+	/**
+	 *  Activates the item's primary use, e.g. toggling a flashlight on/off.
+	 *  Bound to the mouse button matching the hand this item is equipped in.
+	 *  Empty by default; subclasses override it for their own behavior.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Item|Equip")
+	virtual void UseItem();
 };

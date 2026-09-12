@@ -123,6 +123,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	bool AutoEquip(TSubclassOf<AItemBase> ItemClass);
 
+	/**
+	 *  Activates UseItem on the item equipped in the given hand (Left or Right).
+	 *  A two handed item is a single instance stored in the right hand slot, so only
+	 *  Left activates it, matching the mouse button convention.
+	 */
+	UFUNCTION(BlueprintCallable, Category="Inventory")
+	void UseHandItem(EItemEquipHand Hand);
+
 	/** Clears a hand slot and destroys its visual. Clears both slots for a two handed item */
 	UFUNCTION(BlueprintCallable, Category="Inventory")
 	void UnequipHand(EItemEquipHand Hand);

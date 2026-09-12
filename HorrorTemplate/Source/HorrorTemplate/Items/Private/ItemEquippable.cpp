@@ -2,3 +2,7 @@
 
 
 #include "ItemEquippable.h"
+
+void AItemEquippable::UseItem()
+{
+}

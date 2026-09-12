@@ -3,6 +3,8 @@
 
 #include "HorrorPlayerPawn.h"
 #include "InteractionComponent.h"
+#include "InventoryComponent.h"
+#include "HorrorMainPlayerController.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "HorrorTemplate.h"
@@ -44,6 +46,10 @@ void AHorrorPlayerPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 			EnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Started, InteractionComp, &UInteractionComponent::Interact);
 			EnhancedInputComponent->BindAction(CancelAction, ETriggerEvent::Started, InteractionComp, &UInteractionComponent::CancelInspect);
 		}
+
+		// hand item use
+		EnhancedInputComponent->BindAction(UseLeftAction, ETriggerEvent::Started, this, &AHorrorPlayerPawn::DoUseLeftHand);
+		EnhancedInputComponent->BindAction(UseRightAction, ETriggerEvent::Started, this, &AHorrorPlayerPawn::DoUseRightHand);
 	}
 	else
 	{
@@ -96,5 +102,37 @@ void AHorrorPlayerPawn::DoStopSprint()
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
 		Movement->MaxWalkSpeed = WalkSpeed;
+	}
+}
+
+void AHorrorPlayerPawn::DoUseLeftHand()
+{
+	if (Interaction && Interaction->IsInspecting())
+	{
+		return;
+	}
+
+	if (const AHorrorMainPlayerController* PlayerController = Cast<AHorrorMainPlayerController>(GetController()))
+	{
+		if (UInventoryComponent* PlayerInventory = PlayerController->GetInventory())
+		{
+			PlayerInventory->UseHandItem(EItemEquipHand::Left);
+		}
+	}
+}
+
+void AHorrorPlayerPawn::DoUseRightHand()
+{
+	if (Interaction && Interaction->IsInspecting())
+	{
+		return;
+	}
+
+	if (const AHorrorMainPlayerController* PlayerController = Cast<AHorrorMainPlayerController>(GetController()))
+	{
+		if (UInventoryComponent* PlayerInventory = PlayerController->GetInventory())
+		{
+			PlayerInventory->UseHandItem(EItemEquipHand::Right);
+		}
 	}
 }
